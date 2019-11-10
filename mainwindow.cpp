@@ -66,9 +66,8 @@ void MainWindow::createActions() {
 
   showHelpMessageAction = new QAction(tr("&Command-line options"), this);
   showHelpMessageAction->setMenuRole(QAction::NoRole);
-  showHelpMessageAction->setStatusTip(
-      tr("Show the help message to get a list with possible Bitcoin "
-         "command-line options"));
+  showHelpMessageAction->setStatusTip(tr("Show the help message to get a list "
+                                         "with possible command-line options"));
 
   connect(quitAction, &QAction::triggered, qApp, QApplication::quit);
 }
