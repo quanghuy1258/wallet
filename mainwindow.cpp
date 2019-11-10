@@ -6,7 +6,6 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
 
   // Create actions for the toolbar, menu bar and tray/dock icon
-  // Needs walletFrame to be initialized
   createActions();
 
   // Create application menu bar
