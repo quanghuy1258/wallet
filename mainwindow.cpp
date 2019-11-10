@@ -23,51 +23,33 @@ void MainWindow::createActions() {
   aboutAction = new QAction(tr("&About me"), this);
   aboutAction->setStatusTip(tr("Show information about me"));
   aboutAction->setMenuRole(QAction::AboutRole);
-  aboutAction->setEnabled(false);
-  aboutQtAction = new QAction(tr("About &Qt"), this);
-  aboutQtAction->setStatusTip(tr("Show information about Qt"));
-  aboutQtAction->setMenuRole(QAction::AboutQtRole);
-  optionsAction = new QAction(tr("&Options..."), this);
+  optionsAction = new QAction(tr("&Options"), this);
   optionsAction->setStatusTip(tr("Modify configuration options"));
   optionsAction->setMenuRole(QAction::PreferencesRole);
-  optionsAction->setEnabled(false);
 
-  encryptWalletAction = new QAction(tr("&Encrypt Wallet..."), this);
+  encryptWalletAction = new QAction(tr("&Encrypt Wallet"), this);
   encryptWalletAction->setStatusTip(
       tr("Encrypt the private keys that belong to your wallet"));
   encryptWalletAction->setCheckable(true);
-  backupWalletAction = new QAction(tr("&Backup Wallet..."), this);
+  backupWalletAction = new QAction(tr("&Backup Wallet"), this);
   backupWalletAction->setStatusTip(tr("Backup wallet to another location"));
-  changePassphraseAction = new QAction(tr("&Change Passphrase..."), this);
+  changePassphraseAction = new QAction(tr("&Change Passphrase"), this);
   changePassphraseAction->setStatusTip(
       tr("Change the passphrase used for wallet encryption"));
-  backupWalletAction = new QAction(tr("&Backup Wallet..."), this);
-  backupWalletAction->setStatusTip(tr("Backup wallet to another location"));
-  signMessageAction = new QAction(tr("Sign &message..."), this);
-  signMessageAction->setStatusTip(
-      tr("Sign messages with your Bitcoin addresses to prove you own them"));
-  verifyMessageAction = new QAction(tr("&Verify message..."), this);
-  verifyMessageAction->setStatusTip(
-      tr("Verify messages to ensure they were signed with specified Bitcoin "
-         "addresses"));
 
-  openAction = new QAction(tr("Open &URI..."), this);
-  openAction->setStatusTip(tr("Open a bitcoin: URI"));
+  openWalletAction = new QAction(tr("Open Wallet"), this);
+  openWalletAction->setStatusTip(tr("Open a wallet"));
 
-  m_open_wallet_action = new QAction(tr("Open Wallet"), this);
-  m_open_wallet_action->setEnabled(false);
-  m_open_wallet_action->setStatusTip(tr("Open a wallet"));
+  closeWalletAction = new QAction(tr("Close Wallet"), this);
+  closeWalletAction->setStatusTip(tr("Close wallet"));
 
-  m_close_wallet_action = new QAction(tr("Close Wallet..."), this);
-  m_close_wallet_action->setStatusTip(tr("Close wallet"));
+  createWalletAction = new QAction(tr("Create Wallet"), this);
+  createWalletAction->setStatusTip(tr("Create a new wallet"));
 
-  m_create_wallet_action = new QAction(tr("Create Wallet..."), this);
-  m_create_wallet_action->setStatusTip(tr("Create a new wallet"));
-
-  showHelpMessageAction = new QAction(tr("&Command-line options"), this);
-  showHelpMessageAction->setMenuRole(QAction::NoRole);
-  showHelpMessageAction->setStatusTip(tr("Show the help message to get a list "
-                                         "with possible command-line options"));
+  showHelpAction = new QAction(tr("&Command-line options"), this);
+  showHelpAction->setMenuRole(QAction::NoRole);
+  showHelpAction->setStatusTip(tr("Show the help message to get a list with "
+                                  "possible command-line options"));
 
   connect(quitAction, &QAction::triggered, qApp, QApplication::quit);
 }
@@ -83,14 +65,11 @@ void MainWindow::createMenuBar() {
 
   // Configure the menus
   QMenu *file = appMenuBar->addMenu(tr("&File"));
-  file->addAction(m_create_wallet_action);
-  file->addAction(m_open_wallet_action);
-  file->addAction(m_close_wallet_action);
+  file->addAction(createWalletAction);
+  file->addAction(openWalletAction);
+  file->addAction(closeWalletAction);
   file->addSeparator();
-  file->addAction(openAction);
   file->addAction(backupWalletAction);
-  file->addAction(signMessageAction);
-  file->addAction(verifyMessageAction);
   file->addSeparator();
   file->addAction(quitAction);
 
@@ -101,8 +80,7 @@ void MainWindow::createMenuBar() {
   settings->addAction(optionsAction);
 
   QMenu *help = appMenuBar->addMenu(tr("&Help"));
-  help->addAction(showHelpMessageAction);
+  help->addAction(showHelpAction);
   help->addSeparator();
   help->addAction(aboutAction);
-  help->addAction(aboutQtAction);
 }

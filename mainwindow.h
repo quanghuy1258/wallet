@@ -21,19 +21,15 @@ private:
 
   QMenuBar *appMenuBar = nullptr;
   QAction *quitAction = nullptr;
-  QAction *signMessageAction = nullptr;
-  QAction *verifyMessageAction = nullptr;
   QAction *aboutAction = nullptr;
   QAction *optionsAction = nullptr;
   QAction *encryptWalletAction = nullptr;
   QAction *backupWalletAction = nullptr;
   QAction *changePassphraseAction = nullptr;
-  QAction *aboutQtAction = nullptr;
-  QAction *openAction = nullptr;
-  QAction *showHelpMessageAction = nullptr;
-  QAction *m_create_wallet_action{nullptr};
-  QAction *m_open_wallet_action{nullptr};
-  QAction *m_close_wallet_action{nullptr};
+  QAction *showHelpAction = nullptr;
+  QAction *createWalletAction = nullptr;
+  QAction *openWalletAction = nullptr;
+  QAction *closeWalletAction = nullptr;
 
   /** Create the main UI actions. */
   void createActions();
