@@ -18,11 +18,17 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
-    wallet.cpp
+    walletcontroller.cpp \
+    walletframe.cpp \
+    walletmodel.cpp \
+    walletview.cpp
 
 HEADERS += \
     mainwindow.h \
-    wallet.h
+    walletcontroller.h \
+    walletframe.h \
+    walletmodel.h \
+    walletview.h
 
 FORMS += \
     mainwindow.ui
