@@ -20,6 +20,7 @@ SOURCES += \
     createwalletdialog.cpp \
     main.cpp \
     mainwindow.cpp \
+    wallet.cpp \
     walletcontroller.cpp \
     walletframe.cpp \
     walletmodel.cpp \
@@ -29,6 +30,8 @@ HEADERS += \
     askpassphrasedialog.h \
     createwalletdialog.h \
     mainwindow.h \
+    sec_block.h \
+    wallet.h \
     walletcontroller.h \
     walletframe.h \
     walletmodel.h \
@@ -41,3 +44,5 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+unix|win32: LIBS += -lcryptopp
