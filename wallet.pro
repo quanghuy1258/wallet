@@ -18,6 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     askpassphrasedialog.cpp \
     createwalletdialog.cpp \
+    crypter.cpp \
     main.cpp \
     mainwindow.cpp \
     wallet.cpp \
@@ -29,6 +30,7 @@ SOURCES += \
 HEADERS += \
     askpassphrasedialog.h \
     createwalletdialog.h \
+    crypter.h \
     mainwindow.h \
     sec_block.h \
     wallet.h \
