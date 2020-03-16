@@ -17,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     askpassphrasedialog.cpp \
+    berkeley_db.cpp \
     createwalletdialog.cpp \
     crypter.cpp \
     main.cpp \
@@ -29,6 +30,7 @@ SOURCES += \
 
 HEADERS += \
     askpassphrasedialog.h \
+    berkeley_db.h \
     createwalletdialog.h \
     crypter.h \
     mainwindow.h \
@@ -47,4 +49,6 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-unix|win32: LIBS += -lcryptopp
+unix|win32: LIBS += \
+    -lcryptopp \
+    -ldb_cxx
