@@ -22,6 +22,7 @@ SOURCES += \
     crypter.cpp \
     main.cpp \
     mainwindow.cpp \
+    util.cpp \
     wallet.cpp \
     walletcontroller.cpp \
     walletframe.cpp \
@@ -35,6 +36,7 @@ HEADERS += \
     crypter.h \
     mainwindow.h \
     sec_block.h \
+    util.h \
     wallet.h \
     walletcontroller.h \
     walletframe.h \
