@@ -36,9 +36,23 @@ public:
   QDir getDirectory() const;
 
   void close();
+
+  void closeDb(const std::string &filename);
 };
 
-class BerkeleyDatabase {};
+class BerkeleyDatabase {
+private:
+  std::string _filename;
+
+public:
+  std::shared_ptr<BerkeleyEnvironment> env;
+  std::unique_ptr<Db> db;
+
+  ~BerkeleyDatabase();
+  void reset();
+
+  void close();
+};
 
 class BerkeleyBatch {};
 
