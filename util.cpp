@@ -12,14 +12,14 @@ QString StdString2QString(const std::string &s) {
   return QString::fromStdString(s);
 }
 
-void tryCreateDirectories(const QDir &pathDir) {
+void createDirectories(const QDir &pathDir) {
   std::string errorMsg = "Cannot create directories: ";
   if (!QDir::root().mkpath(pathDir.absolutePath()))
     throw std::runtime_error(errorMsg +
                              QString2StdString(pathDir.absolutePath()));
 }
 
-void tryLockDirectory(const QDir &pathDir, const std::string &lockfileName) {
+void lockDirectory(const QDir &pathDir, const std::string &lockfileName) {
   std::lock_guard<std::mutex> lock(mDirLocks);
   std::string errorMsg;
   QString pathQString = pathDir.filePath(StdString2QString(lockfileName));
@@ -54,4 +54,9 @@ void unlockDirectory(const QDir &pathDir, const std::string &lockfileName) {
   if (!lockfile.remove())
     throw std::runtime_error(errorMsg + pathStdString);
   dirLocks.erase(pathStdString);
+}
+
+int64_t getTime() {
+  auto now = std::chrono::system_clock::now();
+  return now.time_since_epoch().count();
 }
