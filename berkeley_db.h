@@ -7,14 +7,27 @@
 #include <memory>
 #include <string>
 
+#include <QDataStream>
 #include <QDir>
 
 #define HAVE_CXX_STDHEADERS
 #include <db_cxx.h>
 
+static const unsigned int DEFAULT_WALLET_DBLOGSIZE = 100;
+
 class BerkeleyEnvironment;
 class BerkeleyDatabase;
 class BerkeleyBatch;
+class SafeDbt;
+
+class SafeDbt {
+public:
+  Dbt dbt;
+
+  SafeDbt();
+  SafeDbt(char *data, int size);
+  ~SafeDbt();
+};
 
 class BerkeleyEnvironment {
 private:
@@ -38,6 +51,8 @@ public:
   void close();
 
   void closeDb(const std::string &filename);
+
+  DbTxn *TxnBegin();
 };
 
 class BerkeleyDatabase {
@@ -54,6 +69,104 @@ public:
   void close();
 };
 
-class BerkeleyBatch {};
+class BerkeleyBatch {
+private:
+  BerkeleyEnvironment *_env;
+  std::string _filename;
+  Db *_pDb;
+  DbTxn *_activeTxn;
+  bool _fReadOnly;
+
+public:
+  BerkeleyBatch(BerkeleyDatabase &database, bool isReadOnly = false,
+                bool isCreate = false);
+  ~BerkeleyBatch();
+
+  BerkeleyBatch(const BerkeleyBatch &) = delete;
+  BerkeleyBatch &operator=(const BerkeleyBatch &) = delete;
+
+  void flush();
+  void close();
+
+  bool TxnBegin();
+  bool TxnCommit();
+  bool TxnAbort();
+
+  Dbc *getCursor();
+  bool readAtCursor(Dbc *pCursor, QDataStream &keyStream,
+                    QDataStream &valueStream);
+
+  template <typename K, typename T> bool read(const K &key, T &value) {
+    if (!_pDb)
+      return false;
+
+    QByteArray keyArray;
+    QDataStream keyStream(&keyArray, QIODevice::ReadWrite);
+    keyStream << key;
+    SafeDbt keyData(keyArray.data(), keyArray.size());
+
+    SafeDbt valueData;
+    int ret = _pDb->get(_activeTxn, &keyData.dbt, &valueData.dbt, 0);
+    if (valueData.dbt.get_data() != nullptr) {
+      try {
+        QByteArray valueArray(
+            reinterpret_cast<const char *>(valueData.dbt.get_data()),
+            valueData.dbt.get_size());
+        QDataStream valueStream(&valueArray, QIODevice::ReadWrite);
+        valueArray >> value;
+      } catch (...) {
+        return false;
+      }
+    }
+
+    return (ret == 0);
+  }
+
+  template <typename K, typename T>
+  bool write(const K &key, const T &value, bool fOverwrite = true) {
+    if (!_pDb || _fReadOnly)
+      return false;
+
+    QByteArray keyArray;
+    QDataStream keyStream(&keyArray, QIODevice::ReadWrite);
+    keyStream << key;
+    SafeDbt keyData(keyArray.data(), keyArray.size());
+
+    QByteArray valueArray;
+    QDataStream valueStream(&valueArray, QIODevice::ReadWrite);
+    valueStream << value;
+    SafeDbt valueData(valueArray.data(), valueArray.size());
+
+    int ret = _pDb->put(_activeTxn, &keyData.dbt, &valueData.dbt,
+                        (fOverwrite ? 0 : DB_NOOVERWRITE));
+    return (ret == 00);
+  }
+
+  template <typename K> bool erase(const K &key) {
+    if (!_pDb || _fReadOnly)
+      return false;
+
+    QByteArray keyArray;
+    QDataStream keyStream(&keyArray, QIODevice::ReadWrite);
+    keyStream << key;
+    SafeDbt keyData(keyArray.data(), keyArray.size());
+
+    int ret = _pDb->del(_activeTxn, &keyData.dbt, 0);
+    return (ret == 0 || ret == DB_NOTFOUND);
+  }
+
+  template <typename K> bool exists(const K &key) {
+    if (!_pDb)
+      return false;
+
+    QByteArray keyArray;
+    QDataStream keyStream(&keyArray, QIODevice::ReadWrite);
+    keyStream << key;
+    SafeDbt keyData(keyArray.data(), keyArray.size());
+
+    int ret = _pDb->exists(_activeTxn, &keyData.dbt, 0);
+    return (ret == 0);
+  }
+};
 
 #endif // BERKELEY_DB_H
