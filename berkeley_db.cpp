@@ -32,6 +32,52 @@ bool BerkeleyEnvironment::isDatabaseLoaded(
 
 QDir BerkeleyEnvironment::getDirectory() const { return _path; }
 
+bool BerkeleyEnvironment::verify(const std::string &filename) {
+  Db db(dbEnv.get(), 0);
+  return db.verify(filename.c_str(), nullptr, nullptr, 0);
+}
+
+void BerkeleyEnvironment::open() {
+  if (_fDbEnvInit)
+    return;
+  std::string errorMsg;
+
+  createDirectories(_path);
+  lockDirectory(_path, ".dbEnvLock");
+
+  QDir pathLogDir = _path;
+  errorMsg = "Cannot create database log directory";
+  if (!pathLogDir.mkdir("database") || !pathLogDir.cd("database"))
+    throw std::runtime_error(errorMsg +
+                             QString2StdString(pathLogDir.absolutePath()));
+
+  unsigned int envFlags = 0;
+  envFlags |= DB_CREATE;
+  envFlags |= DB_INIT_LOCK;
+  envFlags |= DB_INIT_LOG;
+  envFlags |= DB_INIT_MPOOL;
+  envFlags |= DB_INIT_TXN;
+  envFlags |= DB_THREAD;
+  envFlags |= DB_RECOVER;
+  envFlags |= DB_PRIVATE;
+
+  dbEnv->set_cachesize(0, DEFAULT_DB_CACHESIZE, 1);
+  dbEnv->set_lg_dir(QString2StdString(pathLogDir.absolutePath()).c_str());
+  dbEnv->set_lg_bsize(DEFAULT_DB_LOGSIZE);
+  dbEnv->set_lg_max(DEFAULT_DB_LOGMAX);
+  dbEnv->set_errfile(
+      fopen(QString2StdString(_path.filePath("db.log")).c_str(), "a+"));
+  dbEnv->set_flags(DB_AUTO_COMMIT, 1);
+
+  int ret =
+      dbEnv->open(QString2StdString(_path.absolutePath()).c_str(), envFlags, 0);
+  errorMsg = "Cannot create database environment: ";
+  if (ret)
+    throw std::runtime_error(errorMsg + DbEnv::strerror(ret));
+
+  _fDbEnvInit = true;
+}
+
 void BerkeleyEnvironment::close() {
   if (!_fDbEnvInit)
     return;
@@ -55,10 +101,72 @@ void BerkeleyEnvironment::close() {
   unlockDirectory(_path, ".dbEnvLock");
 }
 
+void BerkeleyEnvironment::flush(bool fShutdown) {
+  if (!_fDbEnvInit)
+    return;
+
+  {
+    const std::lock_guard<std::recursive_mutex> lock(mutexDb);
+    for (auto &db : mapDatabases) {
+      auto it = mapFileUseCount.find(db.first);
+      if (it == mapFileUseCount.end() || it->second != 0)
+        continue;
+      closeDb(db.first);
+      mapFileUseCount.erase(db.first);
+    }
+    dbEnv->txn_checkpoint(0, 0, 0);
+
+    if (fShutdown && mapFileUseCount.empty()) {
+      int ret;
+      std::string errorMsg;
+      char **begin, **list;
+
+      errorMsg = "Cannot get log archive list: ";
+      if ((ret = dbEnv->log_archive(&list, DB_ARCH_ABS)) != 0)
+        throw std::runtime_error(errorMsg + DbEnv::strerror(ret));
+
+      errorMsg = "Cannot remove log: ";
+      if (list != NULL) {
+        int listlen = 0, i;
+        for (begin = list; *begin != NULL; begin++)
+          listlen++;
+        int minlog = listlen - 3; // Keep the most recent 3 logs
+        for (begin = list, i = 0; i < minlog; list++, i++) {
+          if ((ret = unlink(*list)) != 0)
+            throw std::runtime_error(errorMsg + *list);
+        }
+        free(begin);
+      }
+
+      close();
+    }
+  }
+}
+
 void BerkeleyEnvironment::closeDb(const std::string &filename) {
   auto db = mapDatabases.find(filename);
   if (db != mapDatabases.end())
     db->second.get().close();
+}
+
+void BerkeleyEnvironment::reloadDbEnv() {
+  std::unique_lock<std::recursive_mutex> lock(mutexDb);
+  cvDbInUse.wait(lock, [this]() {
+    for (auto &count : mapFileUseCount) {
+      if (count.second > 0)
+        return false;
+    }
+    return true;
+  });
+  std::vector<std::string> filenames;
+  for (auto &it : mapDatabases) {
+    filenames.push_back(it.first);
+  }
+  for (auto &it : filenames)
+    closeDb(it);
+  flush(true);
+  reset();
+  open();
 }
 
 DbTxn *BerkeleyEnvironment::TxnBegin() {
@@ -109,7 +217,7 @@ void BerkeleyBatch::flush() {
     return;
 
   uint32_t min = _fReadOnly ? 1 : 0;
-  uint32_t kbyte = (_fReadOnly ? DEFAULT_WALLET_DBLOGSIZE : 0) * 1024;
+  uint32_t kbyte = (_fReadOnly ? DEFAULT_DB_LOGSIZE : 0) / 1024;
 
   if (_env)
     _env->dbEnv->txn_checkpoint(kbyte, min, 0);

@@ -13,7 +13,9 @@
 #define HAVE_CXX_STDHEADERS
 #include <db_cxx.h>
 
-static const unsigned int DEFAULT_WALLET_DBLOGSIZE = 100;
+static const unsigned int DEFAULT_DB_CACHESIZE = 0x100000;
+static const unsigned int DEFAULT_DB_LOGSIZE = 0x10000;
+static const unsigned int DEFAULT_DB_LOGMAX = 0x100000;
 
 class BerkeleyEnvironment;
 class BerkeleyDatabase;
@@ -38,19 +40,24 @@ public:
   std::unique_ptr<DbEnv> dbEnv;
   std::map<std::string, int> mapFileUseCount;
   std::map<std::string, std::reference_wrapper<BerkeleyDatabase>> mapDatabases;
-  std::condition_variable cvDbInUse;
+  std::condition_variable_any cvDbInUse;
 
   BerkeleyEnvironment(const QDir &env_directory);
   ~BerkeleyEnvironment();
   void reset();
 
+  bool verify(const std::string &filename);
+
   bool isInitialized() const;
   bool isDatabaseLoaded(const std::string &dbFilename) const;
   QDir getDirectory() const;
 
+  void open();
   void close();
+  void flush(bool fShutdown);
 
   void closeDb(const std::string &filename);
+  void reloadDbEnv();
 
   DbTxn *TxnBegin();
 };
