@@ -177,6 +177,14 @@ DbTxn *BerkeleyEnvironment::TxnBegin() {
   return pTxn;
 }
 
+BerkeleyDatabase::BerkeleyDatabase(
+    const std::shared_ptr<BerkeleyEnvironment> &dbEnv,
+    const std::string &filename) {
+  env = dbEnv;
+  _filename = filename;
+  env->mapDatabases.emplace(_filename, std::ref(*this));
+}
+
 BerkeleyDatabase::~BerkeleyDatabase() {
   close();
   if (env) {
@@ -190,6 +198,8 @@ void BerkeleyDatabase::reset() {
   env.reset();
   db.reset();
 }
+
+std::string BerkeleyDatabase::getFileName() const { return _filename; }
 
 void BerkeleyDatabase::close() {
   std::string errorMsg;
@@ -207,6 +217,65 @@ void BerkeleyDatabase::close() {
     if (ret)
       throw std::runtime_error(errorMsg + DbEnv::strerror(ret));
     db.reset();
+  }
+}
+
+void BerkeleyDatabase::backup(const std::string &pathDest) {
+  std::string errorMsg = "Cannot backup database: ";
+  if (!env || !db)
+    throw std::runtime_error(errorMsg + "Null pointer");
+
+  std::unique_lock<std::recursive_mutex> lock(mutexDb);
+  env->cvDbInUse.wait(lock, [this]() {
+    if ((this->env->mapFileUseCount.count(this->_filename) == 0) ||
+        (this->env->mapFileUseCount[this->_filename] == 0))
+      return true;
+    return false;
+  });
+
+  close();
+  env->dbEnv->txn_checkpoint(0, 0, 0);
+  env->mapFileUseCount.erase(_filename);
+
+  QString fileSrc = env->getDirectory().filePath(StdString2QString(_filename));
+  QString fileDest = StdString2QString(pathDest);
+  if (QDir(fileDest).exists())
+    fileDest = QDir(fileDest).filePath(StdString2QString(_filename));
+  if (!QFile::copy(fileSrc, fileDest))
+    throw std::runtime_error(errorMsg + "Error when copy from " +
+                             QString2StdString(fileSrc) + " to " +
+                             QString2StdString(fileDest));
+}
+
+BerkeleyBatch::BerkeleyBatch(BerkeleyDatabase &database, bool isReadOnly,
+                             bool isCreate) {
+  std::string errorMsg;
+  _fReadOnly = isReadOnly;
+  _env = database.env.get();
+  _filename = database.getFileName();
+
+  unsigned int flags = DB_THREAD;
+  if (isCreate)
+    flags |= DB_CREATE;
+
+  {
+    const std::unique_lock<std::recursive_mutex> lock(mutexDb);
+    _env->open();
+
+    _pDb = database.db.get();
+    if (_pDb == nullptr) {
+      int ret;
+      std::unique_ptr<Db> pDb_temp(new Db(_env->dbEnv.get(), 0));
+      errorMsg = "Cannot open database: ";
+      if ((ret = pDb_temp->open(nullptr, _filename.c_str(), nullptr, DB_BTREE,
+                                flags, 0)) != 0)
+        throw std::runtime_error(errorMsg + DbEnv::strerror(ret));
+
+      _pDb = pDb_temp.release();
+      database.db.reset(_pDb);
+    }
+
+    ++_env->mapFileUseCount[_filename];
   }
 }
 

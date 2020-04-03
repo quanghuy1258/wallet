@@ -70,10 +70,15 @@ public:
   std::shared_ptr<BerkeleyEnvironment> env;
   std::unique_ptr<Db> db;
 
+  BerkeleyDatabase(const std::shared_ptr<BerkeleyEnvironment> &dbEnv,
+                   const std::string &filename);
   ~BerkeleyDatabase();
   void reset();
 
+  std::string getFileName() const;
+
   void close();
+  void backup(const std::string &pathDest);
 };
 
 class BerkeleyBatch {
